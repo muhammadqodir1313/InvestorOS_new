@@ -17,13 +17,13 @@ export default function Settings() {
     weekly: true
   });
   
-  // Profile ma'lumotlarini saqlash uchun
-  const { formData: profileData, updateField } = usePersistForm("user-profile", {
-    firstName: "Sarah",
-    lastName: "Chen", 
-    email: "sarah.chen@venture.co",
-    organization: "Venture Capital Partners"
-  });
+        // Profile ma'lumotlarini saqlash uchun
+        const { formData: profileData, updateField } = usePersistForm("user-profile", {
+            firstName: "Muhammadqodir",
+            lastName: "Abdullajonov",
+            email: "farhodjonovichm1301@gmail.com",
+            organization: "InvestorOS"
+        });
 
   const settingsSections = [
     {

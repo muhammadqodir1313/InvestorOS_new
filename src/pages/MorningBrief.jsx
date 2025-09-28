@@ -371,14 +371,6 @@ export default function MorningBrief() {
               <DialogTitle className="text-xl font-bold">
                 {selectedItem?.title}
               </DialogTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={closeDetails}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
             <div className="flex items-center gap-2 mt-2">
               <Badge variant="outline">{selectedItem?.type}</Badge>
@@ -655,14 +647,6 @@ export default function MorningBrief() {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold">All Tasks</DialogTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsTasksOpen(false)}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -828,14 +812,6 @@ export default function MorningBrief() {
           <DialogHeader>
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold">Add New Task</DialogTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAddTaskOpen(false)}
-                className="h-8 w-8 p-0"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
           </DialogHeader>
 

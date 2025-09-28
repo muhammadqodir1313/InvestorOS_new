@@ -1,12 +1,33 @@
+import { useState } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Profile() {
   const isMobile = useIsMobile();
+  const { toast } = useToast();
+
+  const [profile, setProfile] = useLocalStorage("profile", {
+    name: "Alex Morgan",
+    email: "alex.morgan@acme.com",
+    organization: "Acme Ventures",
+  });
+
+  const [draft, setDraft] = useState(profile);
+  const [tab, setTab] = useState("overview");
+
+  const initials = (profile.name || "").split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase() || "AM";
+
+  const handleSave = () => {
+    setProfile(draft);
+    setTab("overview");
+    toast({ title: "Profile updated", description: "Your changes have been saved." });
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground font-inter animate-in">
@@ -15,21 +36,21 @@ export default function Profile() {
         <div className="flex flex-col sm:flex-row items-center sm:items-end sm:justify-between gap-4 sm:gap-6">
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
             <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg bg-gradient-to-br from-success to-warning flex items-center justify-center text-background font-semibold text-lg sm:text-xl shadow-lg">
-              AM
+              {initials}
             </div>
             <div className="text-center sm:text-left">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-primary">Alex Morgan</h1>
-              <p className="text-muted-foreground text-sm sm:text-base">Product Manager • Acme Ventures</p>
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-primary">{profile.name}</h1>
+              <p className="text-muted-foreground text-sm sm:text-base">Product Manager • {profile.organization}</p>
               <p className="text-xs sm:text-sm text-muted-foreground/70 mt-1">Joined Jan 2023</p>
             </div>
           </div>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto" onClick={() => setTab("settings") }>
             Edit Profile
           </Button>
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs value={tab} onValueChange={setTab} className="w-full">
           <TabsList className={`grid ${isMobile ? 'grid-cols-2' : 'grid-cols-4'} w-full sm:w-auto sm:inline-flex glass-card`}>
             <TabsTrigger 
               value="overview" 
@@ -96,7 +117,7 @@ export default function Profile() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm sm:text-base">
                   <div className="space-y-1">
                     <span className="text-muted-foreground text-xs sm:text-sm">Email</span>
-                    <p className="text-foreground break-all">alex.morgan@acme.com</p>
+                    <p className="text-foreground break-all">{profile.email}</p>
                   </div>
                   <div className="space-y-1">
                     <span className="text-muted-foreground text-xs sm:text-sm">Role</span>
@@ -124,7 +145,8 @@ export default function Profile() {
                     <Label htmlFor="name" className="text-warning text-xs sm:text-sm">Full Name</Label>
                     <Input 
                       id="name" 
-                      defaultValue="Alex Morgan" 
+                      value={draft.name}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                       className="bg-input border-primary/50 text-foreground text-sm"
                     />
                   </div>
@@ -133,7 +155,8 @@ export default function Profile() {
                     <Input 
                       id="email" 
                       type="email" 
-                      defaultValue="alex.morgan@acme.com" 
+                      value={draft.email}
+                      onChange={(e) => setDraft({ ...draft, email: e.target.value })}
                       className="bg-input border-primary/50 text-foreground text-sm"
                     />
                   </div>
@@ -142,11 +165,12 @@ export default function Profile() {
                   <Label htmlFor="organization" className="text-warning text-xs sm:text-sm">Organization</Label>
                   <Input 
                     id="organization" 
-                    defaultValue="Acme Ventures" 
+                    value={draft.organization}
+                    onChange={(e) => setDraft({ ...draft, organization: e.target.value })}
                     className="bg-input border-primary/50 text-foreground text-sm"
                   />
                 </div>
-                <Button className="bg-success hover:bg-success/90 text-success-foreground w-full sm:w-auto">
+                <Button className="bg-success hover:bg-success/90 text-success-foreground w-full sm:w-auto" onClick={handleSave}>
                   Save Changes
                 </Button>
               </CardContent>

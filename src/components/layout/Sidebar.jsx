@@ -23,12 +23,20 @@ const secondaryNavigation = [
 ];
 
 export function Sidebar({ isOpen, onClose }) {
+  // Menu item click'da avtomatik close qilish
+  const handleMenuItemClick = () => {
+    // Responsive da (mobile/tablet) menu item tanlanganda immediate close
+    if (window.innerWidth < 1024) { // lg breakpoint
+      onClose(); // Immediate close
+    }
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden mobile-menu-overlay transition-opacity duration-300 ease-out"
           onClick={onClose}
         />
       )}
@@ -37,7 +45,7 @@ export function Sidebar({ isOpen, onClose }) {
       <div className={`
         glass-sidebar w-64 flex flex-col
         fixed md:relative inset-y-0 left-0 z-50
-        transform transition-transform duration-300 ease-in-out
+        transform transition-transform duration-300 ease-out mobile-sidebar ultra-smooth-menu
         ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
       `}>
         {/* Logo */}
@@ -58,8 +66,9 @@ export function Sidebar({ isOpen, onClose }) {
                 key={item.name}
                 to={item.href}
                 end={item.href === "/"}
+                onClick={handleMenuItemClick}
                 className={({ isActive }) =>
-                  `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${isActive
+                  `group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-300 ease-out ultra-smooth-menu ${isActive
                     ? "bg-primary/10 text-primary border border-primary/20"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent/50 border border-transparent hover:border-border/30"
                   }`
@@ -78,8 +87,9 @@ export function Sidebar({ isOpen, onClose }) {
                 <NavLink
                   key={item.name}
                   to={item.href}
+                  onClick={handleMenuItemClick}
                   className={({ isActive }) =>
-                    `group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
+                    `group flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-300 ease-out ultra-smooth-menu
     ${isActive
                       ? "bg-gradient-to-r from-primary/10 to-primary/20 text-primary border-l-4 border-primary"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"}`
@@ -109,8 +119,8 @@ export function Sidebar({ isOpen, onClose }) {
               <span className="text-xs font-medium text-white">AM</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">Alex Morgan</p>
-              <p className="text-xs text-muted-foreground truncate">Partner, Acme Ventures</p>
+              <p className="text-sm font-medium text-foreground truncate">Abdullajonov Muhammadqodir</p>
+              <p className="text-xs text-muted-foreground truncate">farhodjonovichm1301@gmail.com</p>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { Download, TrendingUp, TrendingDown, DollarSign, Target, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { ExportDialog } from "@/components/ui/export-dialog";
 
 const mockAssets = [
     {
@@ -118,82 +119,35 @@ export default function Portfolio() {
         return colors[sector] || 'bg-muted/10 text-muted-foreground';
     };
 
-    const handleExportReport = () => {
-        const report = `
-# LP Portfolio Report
-
-Generated on: ${new Date().toLocaleDateString()}
-
-## Portfolio Overview
-
-**Total Investment:** ${formatCurrency(totalInvestment)}
-**Current Portfolio Value:** ${formatCurrency(totalCurrentValue)}
-**Total Return:** ${formatCurrency(totalReturn)} (${((overallMultiple - 1) * 100).toFixed(1)}%)
-**Portfolio Multiple:** ${overallMultiple.toFixed(2)}x
-**Active Investments:** ${activeAssets}
-**Total Companies:** ${assets.length}
-
-## Portfolio Composition
-
-### By Status:
-- Active: ${assets.filter(a => a.status === 'active').length} companies (${((assets.filter(a => a.status === 'active').length / assets.length) * 100).toFixed(1)}%)
-- Exited: ${assets.filter(a => a.status === 'exited').length} companies (${((assets.filter(a => a.status === 'exited').length / assets.length) * 100).toFixed(1)}%)  
-- Written-off: ${assets.filter(a => a.status === 'written-off').length} companies (${((assets.filter(a => a.status === 'written-off').length / assets.length) * 100).toFixed(1)}%)
-
-### By Sector:
-${Object.entries(
-            assets.reduce((acc, asset) => {
-                acc[asset.sector] = (acc[asset.sector] || 0) + 1;
-                return acc;
-            }, {})
-        ).map(([sector, count]) => `- ${sector}: ${count} companies (${((count / assets.length) * 100).toFixed(1)}%)`).join('\n')}
-
-## Individual Holdings
-
-${assets.map(asset => `
-### ${asset.company}
-- **Sector:** ${asset.sector}
-- **Stage:** ${asset.stage}  
-- **Investment Date:** ${asset.investmentDate}
-- **Initial Investment:** ${formatCurrency(asset.initialInvestment)}
-- **Current Value:** ${formatCurrency(asset.currentValue)}
-- **Ownership:** ${asset.ownership}%
-- **Status:** ${asset.status.charAt(0).toUpperCase() + asset.status.slice(1)}
-- **IRR:** ${asset.irr.toFixed(1)}%
-- **Multiple:** ${asset.multiple.toFixed(2)}x
-- **Last Valuation:** ${asset.lastValuation}
-`).join('\n')}
-
----
-*This report is generated automatically and reflects the current portfolio status as of the date above.*
-`;
-
-        const blob = new Blob([report], { type: 'text/markdown' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `lp-report-${new Date().toISOString().split('T')[0]}.md`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        toast.success("LP report exported successfully");
-    };
+    // Portfolio ma'lumotlarini export uchun formatlash
+    const portfolioData = assets.map(asset => ({
+        'Company': asset.company,
+        'Sector': asset.sector,
+        'Stage': asset.stage,
+        'Investment Date': asset.investmentDate,
+        'Initial Investment': formatCurrency(asset.initialInvestment),
+        'Current Value': formatCurrency(asset.currentValue),
+        'Ownership %': asset.ownership,
+        'Status': asset.status.charAt(0).toUpperCase() + asset.status.slice(1),
+        'IRR %': asset.irr.toFixed(1),
+        'Multiple': asset.multiple.toFixed(2) + 'x',
+        'Last Valuation': asset.lastValuation
+    }));
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" id="export-content">
             {/* Header */}
             <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between gap-2">
                 <div>
                     <h1 className="text-3xl font-semibold text-foreground">Portfolio</h1>
                     <p className="text-muted-foreground mt-1">Investment Performance & Holdings</p>
                 </div>
-                <Button
-                    onClick={handleExportReport}
-                    className="w-full xs:w-auto"
-                >
-                    <Download className="w-4 h-4 mr-2 xs:flex-1" />
-                    Export LP Report
-                </Button>
+                <ExportDialog data={portfolioData} title="Portfolio Report">
+                    <Button className="w-full xs:w-auto">
+                        <Download className="w-4 h-4 mr-2 xs:flex-1" />
+                        Export Portfolio
+                    </Button>
+                </ExportDialog>
             </div>
 
             {/* Portfolio Overview */}

@@ -8,11 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { MoreHorizontal, ThumbsUp, ThumbsDown, Clock, Building, TrendingUp, MessageSquare, Check, X, Pause, Plus, GripVertical } from "lucide-react";
+import { MoreHorizontal, ThumbsUp, ThumbsDown, Clock, Building, TrendingUp, MessageSquare, Check, X, Pause, Plus, Download } from "lucide-react";
 import { usePersistData } from "@/hooks/use-persist-data";
+import { PipelineExportDialog } from "@/components/ui/export-dialog";
+import { toast } from "sonner";
 import {
   DndContext,
-  closestCenter,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -26,10 +28,9 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import {
-  useSortable,
-} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useEffect, useRef } from "react";
 
 const stages = ["New", "Screening", "Diligence", "IC Ready", "Decided"];
 
@@ -44,7 +45,7 @@ function DroppableStage({ stage, deals, onDealAction, getScoreColor, getSectorCo
   return (
     <div 
       ref={setNodeRef}
-      className={`min-w-[280px] sm:min-w-[320px] flex-shrink-0 stage-drop-zone ${
+      className={`min-w-[280px] sm:min-w-[320px] flex-shrink-0 stage-drop-zone touch-manipulation ${
         isOver ? 'drag-over' : ''
       }`}
     >
@@ -95,6 +96,7 @@ function SortableDeal({ deal, onDealAction, getScoreColor, getSectorColor, setSe
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -110,35 +112,30 @@ function SortableDeal({ deal, onDealAction, getScoreColor, getSectorColor, setSe
     <Card 
       ref={setNodeRef}
       style={style}
-      className={`glass-card cursor-pointer hover:border-primary/30 transition-all duration-200 pipeline-deal ${
+      className={`glass-card hover:border-primary/30 transition-all duration-200 pipeline-deal touch-manipulation ${
         isDragging ? 'dragging shadow-2xl scale-105' : ''
       }`}
-      onClick={() => setSelectedDeal(deal)}
     >
-      <CardHeader className="pb-3">
+      <CardHeader
+        ref={setActivatorNodeRef}
+        className="pb-3 cursor-grab active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-sm font-semibold">{deal.company}</CardTitle>
             <p className="text-xs text-muted-foreground">{deal.name} • {deal.amount}</p>
           </div>
           <div className="flex items-center gap-1">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="h-6 w-6 p-0 cursor-grab active:cursor-grabbing"
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="h-3 w-3" />
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-              <MoreHorizontal className="h-3 w-3" />
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 sm:h-6 sm:w-6">
+              <MoreHorizontal className="h-4 w-4 sm:h-3 sm:w-3" />
             </Button>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3" onClick={() => setSelectedDeal(deal)}>
         <p className="text-xs text-foreground/80 line-clamp-2">
           {deal.description}
         </p>
@@ -208,6 +205,32 @@ function SortableDeal({ deal, onDealAction, getScoreColor, getSectorColor, setSe
               <X className="h-3 w-3" />
             </Button>
           </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Lightweight preview for drag overlay (no useSortable inside)
+function DealPreview({ deal, getScoreColor, getSectorColor }) {
+  if (!deal) return null;
+  return (
+    <Card className="glass-card shadow-2xl scale-105">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-sm font-semibold">{deal.company}</CardTitle>
+            <p className="text-xs text-muted-foreground">{deal.name} • {deal.amount}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Score</span>
+            <span className={`text-xs font-medium ${getScoreColor(deal.score)}`}>{deal.score}/10</span>
+          </div>
+          <Progress value={deal.score * 10} className="h-1" />
         </div>
       </CardContent>
     </Card>
@@ -290,9 +313,15 @@ export default function Pipeline() {
     stage: "New"
   });
 
-  // Drag and drop sensors
+  // Drag and drop sensors - responsive uchun optimizatsiya
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // 5px masofa kerak drag boshlash uchun (mobile uchun kamaytirildi)
+        delay: 50, // 50ms kechikish touch uchun (mobile uchun kamaytirildi)
+        tolerance: 3, // 3px tolerance (mobile uchun kamaytirildi)
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -314,6 +343,49 @@ export default function Pipeline() {
     return colors[sector] || "bg-muted text-muted-foreground";
   };
 
+  // Normalize legacy deals from localStorage to ensure buttons work
+  const normalizedRef = useRef(false);
+
+  useEffect(() => {
+    if (normalizedRef.current) return;
+    if (!Array.isArray(dealsData)) return;
+    let changed = false;
+    const normalized = dealsData.map((d, index) => {
+      const updated = { ...d };
+      if (!updated.id) {
+        updated.id = String(Date.now()) + "-" + index;
+        changed = true;
+      } else if (typeof updated.id !== "string") {
+        updated.id = String(updated.id);
+        changed = true;
+      }
+      if (!Array.isArray(updated.comments)) {
+        updated.comments = [];
+        changed = true;
+      }
+      if (!updated.lastUpdate) {
+        updated.lastUpdate = "now";
+        changed = true;
+      }
+      if (typeof updated.score !== "number") {
+        const parsed = Number(updated.score);
+        updated.score = Number.isFinite(parsed) ? parsed : 5;
+        changed = true;
+      }
+      if (!stages.includes(updated.stage)) {
+        updated.stage = "New";
+        changed = true;
+      }
+      return updated;
+    });
+    if (changed) {
+      setDealsData(normalized);
+      normalizedRef.current = true;
+    } else {
+      normalizedRef.current = true;
+    }
+  }, [dealsData, setDealsData]);
+
   const dealsByStage = stages.reduce((acc, stage) => {
     acc[stage] = dealsData.filter(deal => deal.stage === stage);
     return acc;
@@ -324,6 +396,10 @@ export default function Pipeline() {
     setDealsData(prev => prev.map(deal => 
       deal.id === dealId ? { ...deal, stage: newStage } : deal
     ));
+    
+    // Toast xabari qo'shish
+    const actionText = action === 'accept' ? 'accepted' : action === 'reject' ? 'rejected' : 'put on hold';
+    toast.success(`Deal ${actionText} successfully`);
   };
 
   const addComment = (dealId) => {
@@ -363,6 +439,7 @@ export default function Pipeline() {
       stage: "New"
     });
     setAddDealOpen(false);
+    toast.success("Deal added successfully");
   };
 
   const handleNewDealChange = (field, value) => {
@@ -372,38 +449,49 @@ export default function Pipeline() {
   // Drag and drop handlers
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
+    // Ensure the details panel doesn't block drop zones on the right
+    setSelectedDeal(null);
   };
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
     setActiveId(null);
-
     if (!over) return;
 
     const activeId = active.id;
     const overId = over.id;
 
-    // Agar stage'ga drop qilinsa
-    if (stages.includes(overId)) {
-      setDealsData((items) => {
-        return items.map((item) => {
-          if (item.id === activeId) {
-            return { ...item, stage: overId };
-          }
-          return item;
-        });
-      });
-    } else {
-      // Agar boshqa deal'ga drop qilinsa
-      const activeIndex = dealsData.findIndex((item) => item.id === activeId);
-      const overIndex = dealsData.findIndex((item) => item.id === overId);
-      
-      if (activeIndex !== overIndex) {
-        setDealsData((items) => {
-          return arrayMove(items, activeIndex, overIndex);
-        });
+    setDealsData((items) => {
+      const activeIndex = items.findIndex((i) => i.id === activeId);
+      if (activeIndex === -1) return items;
+      const activeDeal = items[activeIndex];
+
+      // Dropped on a stage column
+      if (stages.includes(overId)) {
+        const updated = [...items];
+        updated[activeIndex] = { ...activeDeal, stage: overId };
+        return updated;
       }
-    }
+
+      // Dropped over another card
+      const overIndex = items.findIndex((i) => i.id === overId);
+      if (overIndex === -1) return items;
+      const overDeal = items[overIndex];
+
+      const updated = [...items];
+      // If over card is in different stage, move active to that stage
+      if (activeDeal.stage !== overDeal.stage) {
+        updated[activeIndex] = { ...activeDeal, stage: overDeal.stage };
+      }
+
+      // Reorder in the flat list to reflect position relative to over card
+      const from = updated.findIndex((i) => i.id === activeId);
+      const to = updated.findIndex((i) => i.id === overId);
+      if (from !== -1 && to !== -1 && from !== to) {
+        return arrayMove(updated, from, to);
+      }
+      return updated;
+    });
   };
 
   const handleDragOver = (event) => {
@@ -421,6 +509,13 @@ export default function Pipeline() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <PipelineExportDialog deals={dealsData}>
+            <Button variant="outline" size="sm">
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+          </PipelineExportDialog>
+          
           <Sheet open={sortPanelOpen} onOpenChange={setSortPanelOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm">
@@ -491,12 +586,12 @@ export default function Pipeline() {
       {/* Kanban Board with Drag and Drop */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragOver={handleDragOver}
       >
-        <div className="flex gap-4 lg:gap-6 overflow-x-auto pb-6 pipeline-scrollbar">
+        <div className="flex gap-4 lg:gap-6 overflow-x-auto pb-6 pipeline-scrollbar touch-manipulation" style={{ touchAction: 'none' }}>
           {stages.map((stage) => (
             <DroppableStage
               key={stage}
@@ -513,15 +608,11 @@ export default function Pipeline() {
         {/* Drag Overlay */}
         <DragOverlay>
           {activeId ? (
-            <div className="transform rotate-2 scale-105 shadow-2xl">
-              <SortableDeal
-                deal={dealsData.find(deal => deal.id === activeId)}
-                onDealAction={handleDealAction}
-                getScoreColor={getScoreColor}
-                getSectorColor={getSectorColor}
-                setSelectedDeal={setSelectedDeal}
-              />
-            </div>
+            <DealPreview
+              deal={dealsData.find((deal) => deal.id === activeId)}
+              getScoreColor={getScoreColor}
+              getSectorColor={getSectorColor}
+            />
           ) : null}
         </DragOverlay>
       </DndContext>

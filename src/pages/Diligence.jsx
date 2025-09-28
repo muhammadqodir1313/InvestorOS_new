@@ -6,8 +6,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { FileText, Link2, Quote, Download, Plus, Edit3 } from "lucide-react";
+import { FileText, Link2, Quote, Download, Plus, Edit3, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { usePersistData } from "@/hooks/use-persist-data";
+import { ExportDialog } from "@/components/ui/export-dialog";
 
 const mockEvidence = [
     {
@@ -42,9 +44,13 @@ const mockEvidence = [
 ];
 
 export default function Diligence() {
-    const [evidence, setEvidence] = useState(mockEvidence);
+    // localStorage da saqlash uchun evidence data
+    const { data: evidence, setData: setEvidence } = usePersistData("diligence-evidence", mockEvidence);
+    const { data: memoContent, setData: setMemoContent } = usePersistData("diligence-memo", "");
+    
     const [selectedEvidence, setSelectedEvidence] = useState(null);
-    const [memoContent, setMemoContent] = useState("");
+    const [editingEvidence, setEditingEvidence] = useState(null);
+    const [addSheetOpen, setAddSheetOpen] = useState(false);
     const [newEvidence, setNewEvidence] = useState({ title: "", content: "", source: "", tags: "" });
 
     const handleAddEvidence = () => {
@@ -63,45 +69,57 @@ export default function Diligence() {
 
         setEvidence(prev => [evidence, ...prev]);
         setNewEvidence({ title: "", content: "", source: "", tags: "" });
+        setAddSheetOpen(false); // Sheet'ni close qilish
         toast.success("Evidence added successfully");
     };
 
-    const handleExportMemo = () => {
-        const memo = `
-# Investment Memo
-
-Generated on: ${new Date().toLocaleDateString()}
-
-## Executive Summary
-${memoContent || "Add your executive summary here..."}
-
-## Supporting Evidence
-
-${evidence.map(item => `
-### ${item.title}
-**Type:** ${item.type.charAt(0).toUpperCase() + item.type.slice(1)}  
-**Source:** ${item.citation}  
-**Tags:** ${item.tags.join(', ')}
-
-${item.content}
-
----
-`).join('')}
-
-## Conclusion
-[Add your investment decision and rationale here]
-`;
-
-        const blob = new Blob([memo], { type: 'text/markdown' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `investment-memo-${new Date().toISOString().split('T')[0]}.md`;
-        a.click();
-        URL.revokeObjectURL(url);
-
-        toast.success("Memo exported successfully");
+    const handleEditEvidence = (evidence) => {
+        setEditingEvidence(evidence);
+        setNewEvidence({
+            title: evidence.title,
+            content: evidence.content,
+            source: evidence.source || "",
+            tags: evidence.tags.join(', ')
+        });
     };
+
+    const handleUpdateEvidence = () => {
+        if (!editingEvidence || !newEvidence.title || !newEvidence.content) return;
+
+        const updatedEvidence = {
+            ...editingEvidence,
+            title: newEvidence.title,
+            content: newEvidence.content,
+            source: newEvidence.source || undefined,
+            citation: newEvidence.source || `Internal note updated on ${new Date().toLocaleDateString()}`,
+            tags: newEvidence.tags.split(',').map(t => t.trim()).filter(Boolean),
+            type: newEvidence.source.startsWith('http') ? 'link' : 'note'
+        };
+
+        setEvidence(prev => prev.map(item => 
+            item.id === editingEvidence.id ? updatedEvidence : item
+        ));
+        
+        setEditingEvidence(null);
+        setNewEvidence({ title: "", content: "", source: "", tags: "" });
+        toast.success("Evidence updated successfully");
+    };
+
+    const handleDeleteEvidence = (evidenceId) => {
+        setEvidence(prev => prev.filter(item => item.id !== evidenceId));
+        toast.success("Evidence deleted successfully");
+    };
+
+    // Export uchun ma'lumotlarni formatlash
+    const diligenceData = evidence.map(item => ({
+        'Title': item.title,
+        'Type': item.type.charAt(0).toUpperCase() + item.type.slice(1),
+        'Content': item.content,
+        'Source': item.source || 'N/A',
+        'Citation': item.citation,
+        'Tags': item.tags.join(', '),
+        'Created Date': item.createdAt
+    }));
 
     const getTypeIcon = (type) => {
         switch (type) {
@@ -120,7 +138,7 @@ ${item.content}
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" id="export-content">
             {/* Header */}
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -133,7 +151,7 @@ ${item.content}
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                    <Sheet>
+                    <Sheet open={addSheetOpen} onOpenChange={setAddSheetOpen}>
                         <SheetTrigger asChild>
                             <Button variant="outline" size="sm">
                                 <Plus className="w-4 h-4 mr-2" />
@@ -188,10 +206,12 @@ ${item.content}
                             </div>
                         </SheetContent>
                     </Sheet>
-                    <Button onClick={handleExportMemo} size="sm" className="justify-center">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export Memo
-                    </Button>
+                    <ExportDialog data={diligenceData} title="Due Diligence Evidence">
+                        <Button size="sm" className="justify-center">
+                            <Download className="w-4 h-4 mr-2" />
+                            Export Evidence
+                        </Button>
+                    </ExportDialog>
                 </div>
             </div>
 
@@ -220,6 +240,30 @@ ${item.content}
                                                 <span className="ml-1">{item.type}</span>
                                             </Badge>
                                             <span className="text-sm text-muted-foreground">{item.createdAt}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 p-0"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleEditEvidence(item);
+                                                }}
+                                            >
+                                                <Edit3 className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteEvidence(item.id);
+                                                }}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </div>
                                     <h4 className="font-medium text-foreground mb-2">{item.title}</h4>
@@ -252,6 +296,71 @@ ${item.content}
                             />
                         </CardContent>
                     </Card>
+
+                    {/* Edit Evidence Sheet */}
+                    {editingEvidence && (
+                        <Sheet open={!!editingEvidence} onOpenChange={() => setEditingEvidence(null)}>
+                            <SheetContent className="glass-card border-border/50">
+                                <SheetHeader>
+                                    <SheetTitle>Edit Evidence</SheetTitle>
+                                </SheetHeader>
+                                <div className="space-y-4 mt-6">
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground">Title</label>
+                                        <Input
+                                            value={newEvidence.title}
+                                            onChange={(e) => setNewEvidence(prev => ({ ...prev, title: e.target.value }))}
+                                            placeholder="Evidence title"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground">Content</label>
+                                        <Textarea
+                                            value={newEvidence.content}
+                                            onChange={(e) => setNewEvidence(prev => ({ ...prev, content: e.target.value }))}
+                                            placeholder="Evidence content or summary"
+                                            className="mt-1"
+                                            rows={4}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground">Source (optional)</label>
+                                        <Input
+                                            value={newEvidence.source}
+                                            onChange={(e) => setNewEvidence(prev => ({ ...prev, source: e.target.value }))}
+                                            placeholder="URL or source reference"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-foreground">Tags</label>
+                                        <Input
+                                            value={newEvidence.tags}
+                                            onChange={(e) => setNewEvidence(prev => ({ ...prev, tags: e.target.value }))}
+                                            placeholder="tag1, tag2, tag3"
+                                            className="mt-1"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button onClick={handleUpdateEvidence} className="flex-1">
+                                            <Save className="w-4 h-4 mr-2" />
+                                            Update Evidence
+                                        </Button>
+                                        <Button 
+                                            variant="outline" 
+                                            onClick={() => {
+                                                setEditingEvidence(null);
+                                                setNewEvidence({ title: "", content: "", source: "", tags: "" });
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                    </div>
+                                </div>
+                            </SheetContent>
+                        </Sheet>
+                    )}
 
                     {/* Evidence Detail Sheet */}
                     {selectedEvidence && (

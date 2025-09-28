@@ -220,17 +220,31 @@
   /* Pipeline specific drag animations */
   .pipeline-deal {
     transition: all var(--transition-fast);
+    user-select: none; /* Text selection'ni o'chirish */
   }
 
   .pipeline-deal:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 16px hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary) / 0.3);
   }
 
   .pipeline-deal.dragging {
     transform: rotate(1deg) scale(1.02);
     box-shadow: 0 12px 40px hsl(var(--primary) / 0.2);
     opacity: 0.8;
+    z-index: 1000;
+  }
+
+  /* Drag cursor states */
+  .pipeline-deal:active {
+    cursor: grabbing;
+  }
+
+  /* Mobile touch feedback */
+  .pipeline-deal:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
   }
 
   /* Stage drop zone styles */
@@ -253,6 +267,74 @@
   .stage-drop-zone.drag-over .stage-badge {
     background: hsl(var(--primary) / 0.2);
     color: hsl(var(--primary));
+  }
+
+  /* Touch-friendly drag and drop */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+
+  /* Responsive drag and drop optimizatsiya */
+  @media (max-width: 768px) {
+    .pipeline-deal {
+      touch-action: none; /* Tablet va mobile da touch scroll'ni o'chirish */
+    }
+    
+    .stage-drop-zone {
+      touch-action: none; /* Tablet va mobile da touch scroll'ni o'chirish */
+    }
+  }
+
+  /* Kichik ekranlar uchun maxsus optimizatsiya */
+  @media (max-width: 480px) {
+    .pipeline-deal {
+      min-height: 160px; /* Kichik ekranlarda kattaroq touch area */
+    }
+    
+    .stage-drop-zone {
+      min-height: 300px; /* Kichik ekranlarda kattaroq drop zone */
+    }
+  }
+
+  /* Mobile drag handle optimization */
+  @media (max-width: 640px) {
+    .pipeline-deal {
+      min-height: 140px; /* Mobile da kattaroq touch area */
+      cursor: grab;
+      touch-action: none; /* Touch scroll'ni to'liq o'chirish */
+    }
+    
+    .pipeline-deal:active {
+      cursor: grabbing;
+      transform: scale(0.98);
+    }
+    
+    .stage-drop-zone {
+      min-height: 250px; /* Mobile da kattaroq drop zone */
+      touch-action: none; /* Touch scroll'ni to'liq o'chirish */
+    }
+  }
+
+  /* Touch device optimizations */
+  @media (hover: none) and (pointer: coarse) {
+    .pipeline-deal:hover {
+      transform: none; /* Touch devices da hover effektlarni o'chirish */
+    }
+    
+    .pipeline-deal:active {
+      transform: scale(0.98);
+      transition: transform 0.1s ease;
+    }
+    
+    /* Touch devices uchun drag optimizatsiya */
+    .pipeline-deal {
+      -webkit-touch-callout: none; /* iOS da callout'ni o'chirish */
+      -webkit-user-select: none; /* Safari da text selection'ni o'chirish */
+      -khtml-user-select: none; /* Konqueror da text selection'ni o'chirish */
+      -moz-user-select: none; /* Firefox da text selection'ni o'chirish */
+      -ms-user-select: none; /* IE da text selection'ni o'chirish */
+      user-select: none; /* Standard text selection'ni o'chirish */
+    }
   }
 }
 
@@ -299,6 +381,49 @@
   .sheet {
     @apply fixed bottom-0 left-0 right-0 bg-card/80 backdrop-blur-xl border-t border-border/50;
     animation: slide-up var(--transition-smooth);
+  }
+
+  /* Mobile menu optimizatsiya */
+  .mobile-menu-overlay {
+    backdrop-filter: blur(8px);
+    transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-menu-overlay.closing {
+    opacity: 0;
+  }
+
+  .mobile-sidebar {
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mobile-sidebar.closing {
+    transform: translateX(-100%);
+  }
+
+  /* Smooth menu close animatsiya */
+  .smooth-menu-close {
+    animation: menuClose 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes menuClose {
+    0% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+  }
+
+  /* Ultra smooth menu transitions */
+  .ultra-smooth-menu {
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+
+  .ultra-smooth-menu:hover {
+    transform: translateX(2px);
   }
 }
 
