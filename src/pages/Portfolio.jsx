@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Progress } from "@/components/ui/progress";
 import { Download, TrendingUp, TrendingDown, DollarSign, Target, Calendar } from "lucide-react";
 import { toast } from "sonner";
-import { ExportDialog } from "@/components/ui/export-dialog";
+import { exportToPDF, exportToCSV, exportToExcel, exportTablePDF } from "@/lib/export-utils";
 
 const mockAssets = [
     {
@@ -142,12 +142,19 @@ export default function Portfolio() {
                     <h1 className="text-3xl font-semibold text-foreground">Portfolio</h1>
                     <p className="text-muted-foreground mt-1">Investment Performance & Holdings</p>
                 </div>
-                <ExportDialog data={portfolioData} title="Portfolio Report">
-                    <Button className="w-full xs:w-auto">
-                        <Download className="w-4 h-4 mr-2 xs:flex-1" />
-                        Export Portfolio
+                <div className="flex gap-2">
+                    <Button className="w-full xs:w-auto" variant="outline" onClick={async () => {
+                        try { exportTablePDF(portfolioData, 'portfolio-report', 'Portfolio Report'); } catch (e) {}
+                    }}>
+                        <Download className="w-4 h-4 mr-2 xs:flex-1" /> PDF
                     </Button>
-                </ExportDialog>
+                    <Button className="w-full xs:w-auto" variant="outline" onClick={() => { exportToCSV(portfolioData, 'portfolio-report'); }}>
+                        CSV
+                    </Button>
+                    <Button className="w-full xs:w-auto" variant="outline" onClick={() => { exportToExcel(portfolioData, 'portfolio-report', 'Portfolio'); }}>
+                        Excel
+                    </Button>
+                </div>
             </div>
 
             {/* Portfolio Overview */}

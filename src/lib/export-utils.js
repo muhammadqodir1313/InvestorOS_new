@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -30,6 +31,20 @@ export const exportToPDF = async (elementId, filename = 'export', title = 'Expor
     wrapper.appendChild(clone);
     document.body.appendChild(wrapper);
 
+    // Inject safety CSS to remove gradients/advanced color functions on clone
+    const safeStyle = document.createElement('style');
+    safeStyle.textContent = `
+      *, *::before, *::after {
+        background-image: none !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+        filter: none !important;
+        -webkit-filter: none !important;
+        outline-color: currentColor !important;
+      }
+    `;
+    clone.prepend(safeStyle);
+
     // Inline safe computed styles to avoid unsupported color functions (e.g., oklab/oklch)
     const inlineStyles = (srcNode, dstNode) => {
       if (!(srcNode instanceof HTMLElement) || !(dstNode instanceof HTMLElement)) return;
@@ -37,11 +52,23 @@ export const exportToPDF = async (elementId, filename = 'export', title = 'Expor
       // Force simple rgb colors
       dstNode.style.backgroundColor = cs.backgroundColor;
       dstNode.style.color = cs.color;
-      dstNode.style.borderColor = cs.borderColor || cs.borderTopColor;
+      dstNode.style.borderTopColor = cs.borderTopColor;
+      dstNode.style.borderRightColor = cs.borderRightColor;
+      dstNode.style.borderBottomColor = cs.borderBottomColor;
+      dstNode.style.borderLeftColor = cs.borderLeftColor;
+      dstNode.style.outlineColor = cs.outlineColor;
+      dstNode.style.textDecorationColor = cs.textDecorationColor;
+      dstNode.style.columnRuleColor = cs.columnRuleColor;
+      dstNode.style.caretColor = cs.caretColor;
       // Remove gradients/shadows that may use modern color spaces
       dstNode.style.backgroundImage = 'none';
       dstNode.style.boxShadow = 'none';
       dstNode.style.textShadow = 'none';
+      // SVG support
+      if (dstNode instanceof SVGElement) {
+        dstNode.setAttribute('fill', cs.fill || 'currentColor');
+        dstNode.setAttribute('stroke', cs.stroke || 'currentColor');
+      }
       // Recurse
       const srcChildren = Array.from(srcNode.children);
       const dstChildren = Array.from(dstNode.children);
@@ -60,6 +87,20 @@ export const exportToPDF = async (elementId, filename = 'export', title = 'Expor
       windowWidth: wrapper.offsetWidth,
       windowHeight: clone.scrollHeight,
       logging: false,
+      onclone: (doc) => {
+        // Ensure pseudo-elements also have gradients off in the cloned doc
+        const style = doc.createElement('style');
+        style.textContent = `
+          *, *::before, *::after {
+            background-image: none !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+            filter: none !important;
+            -webkit-filter: none !important;
+          }
+        `;
+        doc.head.appendChild(style);
+      }
     });
 
     // Cleanup clone
@@ -96,6 +137,33 @@ export const exportToPDF = async (elementId, filename = 'export', title = 'Expor
     console.error('PDF export error:', error);
     throw error;
   }
+};
+
+/**
+ * Table-based PDF export (robust, no html2canvas)
+ * @param {Array<Object>} rows
+ * @param {string} filename
+ * @param {string} title
+ */
+export const exportTablePDF = (rows, filename = 'export', title = 'Export') => {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error('No data to export');
+  }
+  const doc = new jsPDF('p', 'mm', 'a4');
+  doc.setFontSize(16);
+  doc.text(title, 14, 16);
+  const headers = [Object.keys(rows[0])];
+  const data = rows.map((r) => headers[0].map((h) => String(r[h] ?? '')));
+  autoTable(doc, {
+    head: headers,
+    body: data,
+    startY: 22,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [40, 40, 40], textColor: 255 },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    margin: { left: 14, right: 14 },
+  });
+  doc.save(`${filename}.pdf`);
 };
 
 /**

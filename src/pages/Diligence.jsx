@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { FileText, Link2, Quote, Download, Plus, Edit3, Trash2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { usePersistData } from "@/hooks/use-persist-data";
-import { ExportDialog } from "@/components/ui/export-dialog";
+import { exportToPDF, exportToCSV, exportToExcel, exportTablePDF } from "@/lib/export-utils";
 
 const mockEvidence = [
     {
@@ -206,12 +206,23 @@ export default function Diligence() {
                             </div>
                         </SheetContent>
                     </Sheet>
-                    <ExportDialog data={diligenceData} title="Due Diligence Evidence">
-                        <Button size="sm" className="justify-center">
-                            <Download className="w-4 h-4 mr-2" />
-                            Export Evidence
+                    <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={async () => {
+                            try { exportTablePDF(diligenceData, 'diligence-evidence', 'Due Diligence Evidence'); toast.success('PDF exported'); } catch (e) { toast.error(e.message); }
+                        }}>
+                            <Download className="w-4 h-4 mr-2" /> PDF
                         </Button>
-                    </ExportDialog>
+                        <Button size="sm" variant="outline" onClick={() => {
+                            try { exportToCSV(diligenceData, 'diligence-evidence'); toast.success('CSV exported'); } catch (e) { toast.error(e.message); }
+                        }}>
+                            CSV
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => {
+                            try { exportToExcel(diligenceData, 'diligence-evidence', 'Evidence'); toast.success('Excel exported'); } catch (e) { toast.error(e.message); }
+                        }}>
+                            Excel
+                        </Button>
+                    </div>
                 </div>
             </div>
 
