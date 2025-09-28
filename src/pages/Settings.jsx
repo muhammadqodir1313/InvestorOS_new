@@ -7,8 +7,10 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUserPreferences, usePersistForm } from "@/hooks/use-persist-data";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Settings() {
+  const { logout } = useAuth();
   // localStorage da saqlash uchun notification preferences
   const { preferences: notifications, updatePreference } = useUserPreferences("notification-preferences", {
     deals: true,
@@ -251,7 +253,7 @@ export default function Settings() {
                 <Separator className="bg-border/50" />
                 
                 <div className="p-4">
-                  <Button variant="outline" size="sm" className="w-full justify-start gap-2 text-destructive border-destructive/20 hover:bg-destructive/10">
+                  <Button onClick={() => logout()} variant="outline" size="sm" className="w-full justify-start gap-2 text-destructive border-destructive/20 hover:bg-destructive/10">
                     <LogOut className="h-4 w-4" />
                     Sign Out
                   </Button>

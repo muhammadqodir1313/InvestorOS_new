@@ -6,7 +6,7 @@ export const loginApi = async (credentials) => {
 };
 
 export const logoutApi = async () => {
-  localStorage.setItem("isAuthenticated", false);
+  localStorage.setItem("isAuthenticated", "false");
   return { success: true };
 };
 
